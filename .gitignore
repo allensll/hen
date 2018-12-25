@@ -50,4 +50,6 @@ examples/mnist/*
 
 # build
 build
+examples/bin
+include
 
