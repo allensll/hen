@@ -1,2 +1,0 @@
-/usr/bin/ar qc ../lib/libhen.a  CMakeFiles/hen.dir/cloud.cpp.o CMakeFiles/hen.dir/pack.cpp.o CMakeFiles/hen.dir/user.cpp.o
-/usr/bin/ranlib ../lib/libhen.a

@@ -1,3 +1,0 @@
-/home/allensll/github/hen/examples/CMakeFiles/rebuild_cache.dir
-/home/allensll/github/hen/examples/CMakeFiles/example3.dir
-/home/allensll/github/hen/examples/CMakeFiles/edit_cache.dir
