@@ -1,0 +1,17 @@
+[
+{
+  "directory": "/home/allensll/github/hen/build/src",
+  "command": "/usr/bin/g++-8   -I/usr/local/include  -g   -std=gnu++17 -o CMakeFiles/hen.dir/cloud.cpp.o -c /home/allensll/github/hen/src/cloud.cpp",
+  "file": "/home/allensll/github/hen/src/cloud.cpp"
+},
+{
+  "directory": "/home/allensll/github/hen/build/src",
+  "command": "/usr/bin/g++-8   -I/usr/local/include  -g   -std=gnu++17 -o CMakeFiles/hen.dir/pack.cpp.o -c /home/allensll/github/hen/src/pack.cpp",
+  "file": "/home/allensll/github/hen/src/pack.cpp"
+},
+{
+  "directory": "/home/allensll/github/hen/build/src",
+  "command": "/usr/bin/g++-8   -I/usr/local/include  -g   -std=gnu++17 -o CMakeFiles/hen.dir/user.cpp.o -c /home/allensll/github/hen/src/user.cpp",
+  "file": "/home/allensll/github/hen/src/user.cpp"
+}
+]
