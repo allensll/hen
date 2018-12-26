@@ -5,7 +5,7 @@
 
 namespace hen {
 // random function
-float Randomfunction();
+void Randomfunction(float data[], int n, int seed);
 
 
 }

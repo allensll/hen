@@ -8,7 +8,7 @@ using namespace std;
 namespace hen {
 // @struct Sample
 struct Sample {
-  int* data;
+  int* data; // height * weight
   int label;
 };
 
@@ -17,6 +17,7 @@ class MNIST {
  public:
   int height_;
   int weight_;
+  int class_num_;
   int train_numbers_;
   int test_numbers_;
 

@@ -13,7 +13,7 @@ CNN::CNN(int batch_size) :
   output_pool2_({batch_size, 50, 4, 4}),
   output_flat1_({batch_size, 50*4*4}),
   output_fc1_({batch_size, 500}),
-  output_relu3_({batch_size, 10}),
+  output_relu3_({batch_size, 500}),
   // output_fc2_({batch_size, 10}),
 
   conv1_(Conv2D(batch_size, 1, 20, 5, 1)),

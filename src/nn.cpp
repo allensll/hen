@@ -3,29 +3,27 @@
 namespace hen {
 // @ class Weight
 Weight::Weight() {
-  weight_ = new float[1];
-  weight_d_ = new float[1];
-  bias_ = new float[1];
-  bias_d_ = new float[1];
+  input_n_ = 0;
+  output_n_ = 0;
+  weight_n_ = 0;
+  bias_n_ = 0;
+  weight_ = new float[1] {0};
+  weight_d_ = new float[1] {0};
+  bias_ = new float[1] {0};
+  bias_d_ = new float[1] {0};
 }
 
-Weight::Weight(int input, int output) {
+Weight::Weight(int input, int output, int seed) {
   input_n_ = input;
   output_n_ = output;
   weight_n_ = input * output;
   bias_n_ = output;
-  weight_ = new float[weight_n_];
-  weight_d_ = new float[weight_n_];
-  bias_ = new float[bias_n_];
-  bias_d_ = new float[bias_n_];
-  for (int i=0; i<weight_n_; i++) {
-    weight_[i] = Randomfunction();
-    weight_d_[i] = 0;
-  }
-  for (int i=0; i<bias_n_; i++) {
-    bias_[i] = Randomfunction();
-    bias_d_[i] = 0;
-  }
+  weight_ = new float[weight_n_] {0};
+  weight_d_ = new float[weight_n_] {0};
+  bias_ = new float[bias_n_] {0};
+  bias_d_ = new float[bias_n_] {0};
+  Randomfunction(weight_, weight_n_, seed);
+  Randomfunction(bias_, bias_n_, seed);
 }
 Weight & Weight::operator=(const Weight &assign) {
   if (this == &assign)
@@ -37,8 +35,8 @@ Weight & Weight::operator=(const Weight &assign) {
 
   input_n_ = assign.input_n_;
   output_n_ = assign.output_n_;
-  weight_n_ = input_n_ * output_n_;
-  bias_n_ = output_n_;
+  weight_n_ = assign.weight_n_;
+  bias_n_ = assign.bias_n_;
   weight_ = new float[weight_n_];
   weight_d_ = new float[weight_n_];
   bias_ = new float[bias_n_];
@@ -121,20 +119,23 @@ void Weight::ZeroGrad() {
 
 // @ class Kernel
 Kernel::Kernel() {
-  weight_ = new float[0];
-  weight_d_ = new float[0];
+  channel_ = 0;
+  kernel_size_ = 0;
+  weight_n_ = 0;
+  weight_ = new float[1] {0};
+  weight_d_ = new float[1] {0};
+  bias_ = 0;
+  bias_d_ = 0;
 }
 
-Kernel::Kernel(int channel, int kernel_size) {
+Kernel::Kernel(int channel, int kernel_size, int seed) {
+  channel_ = channel;
   kernel_size_ = kernel_size;
   weight_n_ = channel * kernel_size * kernel_size;
-  weight_ = new float[weight_n_];
-  weight_d_ = new float[weight_n_];
-  for (int i=0; i<weight_n_; i++) {
-    weight_[i] = Randomfunction();
-    weight_d_[i] = 0;
-  }
-  bias_ = Randomfunction();
+  weight_ = new float[weight_n_] {0};
+  weight_d_ = new float[weight_n_] {0};
+  Randomfunction(weight_, weight_n_, seed);
+  Randomfunction(&bias_, 1, seed);
   bias_d_ = 0;
 }
 
@@ -176,8 +177,8 @@ Linear::Linear(int batch_size, int input_n, int output_n) {
   input_n_ = input_n;
   output_n_ = output_n;
   weights_ = new Weight[batch_size_];
-  Weight seed(input_n_, output_n_);
   for (int i=0; i<batch_size_; i++) {
+    Weight seed(input_n_, output_n_, i);
     weights_[i] = seed;   // all batch use same weight
   }
 }
@@ -216,9 +217,9 @@ void Linear::Forward(FloatTensor &input, FloatTensor &output) {
     for (int i=1; i<=output_n_; i++) {
       float sum = 0;
       for (int j=1; j<=input_n_; j++) {
-        sum += input.Get({batch, j}) * weights_[batch].Get(i, j);
+        sum += input.Get({batch, j}) * weights_[batch-1].Get(i, j);
       }
-      sum += weights_[batch].bias_[i];
+      sum += weights_[batch-1].bias_[i-1];
       output.Set({batch, i}, sum);
     }
   }
@@ -260,9 +261,9 @@ Conv2D::Conv2D(int batch_size, int input_channel, int output_channel, int kernel
   kernel_n_ = batch_size * output_channel;
   kernels_ = new Kernel[kernel_n_];
   for (int channel=0; channel<output_channel_; channel++) {
-    Kernel seed(input_channel_, kernel_size);
     for (int batch=0; batch<batch_size_; batch++) {
       int idx = batch * batch_size_ + channel;
+      Kernel seed(input_channel_, kernel_size, idx);
       kernels_[idx] = seed;
     }
   }
@@ -299,7 +300,7 @@ float Conv2D::convolution(const Kernel &kernel, const float* const* const data) 
   for (int c=0; c<kernel.channel_; c++) {
     for (int h=0; h<kernel.kernel_size_; h++) {
       for (int w=0; w<kernel.kernel_size_; w++) {
-        idx = c * kernel.channel_* + h * kernel.kernel_size_ + w;
+        idx = c * kernel.kernel_size_ * kernel.kernel_size_ + h * kernel.kernel_size_ + w;
         sum += kernel.weight_[idx] * *data[idx];
       }
     }
@@ -388,7 +389,7 @@ void Conv2D::transkernels(const Kernel* const k_input, Kernel* k_output, int k_i
   int k_output_channel = k_input_n;
   int k_output_n = k_input[0].channel_;
   int k_size = k_input[0].kernel_size_;
-  Kernel seed(k_output_channel, k_size);
+  Kernel seed(k_output_channel, k_size, 1);
   int o_idx = 0;
   int i_idx = 0;
   for (int i=0; i<k_output_n; i++) {
@@ -413,7 +414,7 @@ void Conv2D::tensor2kernels(FloatTensor &input, Kernel* kernels, int stride) {
   int k_channel = input.size_[1];
   int input_size = input.size_[2];
   int k_size = input_size  + (input_size-1)*(stride-1);
-  Kernel seed(k_channel, k_size);
+  Kernel seed(k_channel, k_size, 1);
   for (int n=0; n<kernel_n; n++) {
     for (int ch=0; ch<k_channel; ch++) {
       int idx = 0;
@@ -464,7 +465,7 @@ void Conv2D::Forward(FloatTensor &input, FloatTensor &output) {
         for (int in_ch=0; in_ch<input_channel_; in_ch++) {
           for (int i=0; i<kernel_size_; i++) {
             for (int j=0; j<kernel_size_; j++) {
-              idx = (batch-1) * (input_channel_*input_h*input_w) +  in_ch * (input_h*input_w) + (h+i) *input_h + w+j;
+              idx = (batch-1) * (input_channel_*input_h*input_w) +  in_ch * (input_h*input_w) + (h+i) *input_w + w+j;
               kernel_map[k++] = &input.data_[idx];
             }
           }

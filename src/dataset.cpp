@@ -16,6 +16,7 @@ MNIST::MNIST(string dataset_path) {
 
   height_ = 28;
   weight_ = 28;
+  class_num_ = 10;
   train_numbers_ = 60000;
   test_numbers_ = 10000;
 
@@ -155,15 +156,18 @@ void MNIST::GetTestSamples(IntTensor &data, IntTensor &label) {
 }
 
 void MNIST::GetTrainBatches(FloatTensor data[], FloatTensor label[], int batch_n, int batch_size) {
+  // data[0] { batch_size, 1, height, weight }
+  // label[0] { batch_size }
   int wh = weight_ * height_;
+  
   for (int batch=0; batch<batch_n; batch++) {
-    FloatTensor data_temp;
-    FloatTensor label_temp;
+    FloatTensor data_temp({batch_size, 1, height_, weight_});
+    FloatTensor label_temp({batch_size});
     for (int i=0; i<batch_size; i++) {
       for (int j=0; j<wh; j++) {
-        data_temp.data_[i*wh+j] = train_[batch*batch_size+i].data[i*wh+j];
+        data_temp.data_[i*wh+j] = train_[batch*batch_size+i].data[j];
       }
-      label_temp.data_[i] = train_[batch*batch_size].label;
+      label_temp.data_[i] = train_[batch*batch_size+i].label;
     }
     data[batch] = data_temp;
     label[batch] = label_temp;
@@ -171,15 +175,17 @@ void MNIST::GetTrainBatches(FloatTensor data[], FloatTensor label[], int batch_n
 }
 
 void MNIST::GetTestBatches(FloatTensor data[], FloatTensor label[], int batch_n, int batch_size) {
+  // data[0] { batch_size, 1, height, weight }
+  // label[0] { batch_size }
   int wh = weight_ * height_;
   for (int batch=0; batch<batch_n; batch++) {
-    FloatTensor data_temp;
-    FloatTensor label_temp;
+    FloatTensor data_temp({batch_size, 1, height_, weight_});
+    FloatTensor label_temp({batch_size});
     for (int i=0; i<batch_size; i++) {
       for (int j=0; j<wh; j++) {
-        data_temp.data_[i*wh+j] = test_[batch*batch_size+i].data[i*wh+j];
+        data_temp.data_[i*wh+j] = test_[batch*batch_size+i].data[j];
       }
-      label_temp.data_[i] = test_[batch*batch_size].label;
+      label_temp.data_[i] = test_[batch*batch_size+i].label;
     }
     data[batch] = data_temp;
     label[batch] = label_temp;

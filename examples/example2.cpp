@@ -9,9 +9,12 @@ int main()
   hen::MNIST dataset("mnist");
   dataset.LoadMNIST();
   int batch_n = 2;
-  hen::FloatTensor input_batches[60000/batch_n] {};
-  hen::FloatTensor label_batches[60000/batch_n] {};
-  dataset.GetTrainBatches(input_batches, label_batches, 2, 60000/2);
+  hen::FloatTensor input_batches[60000/batch_n] {};  // { batch_size, 1, height, weight }
+  hen::FloatTensor label_batches[60000/batch_n] {};  // { batch_size }
+  dataset.GetTrainBatches(input_batches, label_batches, 60000/2, 2);
+
+  cout << label_batches[21].Get({1}) << endl;
+  cout << label_batches[21].Get({2}) << endl;
 
   // hen::IntTensor input({60000, 28, 28});
   // hen::IntTensor label({60000});

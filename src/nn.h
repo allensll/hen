@@ -22,7 +22,7 @@ class Weight {
   float* bias_;     // { output_n_ }
   float* bias_d_;
   Weight();
-  Weight(int input, int output);
+  Weight(int input, int output, int seed);
   Weight & operator=(const Weight &assign);
   ~Weight();
   float Get(int i, int j);
@@ -45,7 +45,7 @@ class Kernel {
   float bias_;
   float bias_d_;
   Kernel();
-  Kernel(int channel, int kernel_size_);
+  Kernel(int channel, int kernel_size_, int seed);
   Kernel & operator=(const Kernel &assign);
   ~Kernel();
   void ZeroGrad();

@@ -6,5 +6,6 @@
 #include "tensor.h"
 #include "dataset.h"
 #include "nn.h"
+#include "optim.h"
 #include "models.h"
 #include "utils.h"
