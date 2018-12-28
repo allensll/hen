@@ -1,5 +1,6 @@
 #include <iostream>
 #include <iomanip>
+#include <ctime>
 #include "hen.h"
 #include "optim.h"
 
@@ -51,7 +52,7 @@ int main()
 
   hen::MNIST dataset("examples/mnist");
   dataset.LoadMNIST();
-  int batch_size = 2;
+  int batch_size = 128;
   hen::FloatTensor input_batches[60000/batch_size] {};  // { batch_size, 1, height, weight }
   hen::FloatTensor label_batches[60000/batch_size] {};  // { batch_size }
   dataset.GetTrainBatches(input_batches, label_batches, 60000/batch_size, batch_size);
@@ -62,19 +63,21 @@ int main()
   hen::CrossEntropyLoss cel;
   hen::SGD optimizer(0.01, 0.9);
 
+  int batches = 60000 / batch_size;
   float loss = 0;
   int epoch = 3;
+  clock_t start_time = 0;
   for (int e=0; e<epoch; e++) {
-    cout << "Epoch : " << e << endl;
     // train
-    for (int batch=0; batch<5; batch++) {
+    start_time = clock();
+    for (int batch=0; batch<batches; batch++) {
       model.Forward(input_batches[batch], output);
       loss = cel.Loss(output, label_batches[batch]);
-      cout << "loss: " << loss << endl;
       model.Backward(input_batches[batch], output);
       optimizer.Step(model);
-      cout << "Epoch : " << e << " | batch : " << batch << "/60000 | loss : " << loss << endl;
+      cout << "Epoch : " << e << " | batch : " << batch << "/" << batches << " | loss : " << loss << endl;
     }
+    cout << "Time : " << (float)(clock() - start_time) / CLOCKS_PER_SEC << " s" << endl; 
     // predict
   }
 

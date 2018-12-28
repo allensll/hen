@@ -52,7 +52,8 @@ void SGD::update_linear(Linear &fc, int batch_size) {
       grad /= batch_size;
       float w = fc.weights_[0].Get(o, i);
       w = gradient_descent(w, grad);
-      for (int batch=0; batch<=batch_size; batch++) {
+      for (int batch=0; batch<batch_size; batch++) {
+        // std::cout << batch << std::endl;
         fc.weights_[batch].Set(o, i, w);
       }
     }
@@ -63,35 +64,39 @@ void SGD::update_linear(Linear &fc, int batch_size) {
     grad /= batch_size;
     float w = fc.weights_[0].bias_[o-1];
     w = gradient_descent(w, grad);
-    for (int batch=0; batch<=batch_size; batch++) {
+    for (int batch=0; batch<batch_size; batch++) {
       fc.weights_[batch].bias_[o-1] = w;
     }
   }
 }
 
 void SGD::update_conv(Conv2D &conv, int batch_size) {
+  int output_channel = conv.output_channel_;
+  int input_channel = conv.input_channel_;
   int num = conv.kernel_size_ * conv.kernel_size_;
-  for (int ch=0; ch<conv.output_channel_; ch++) {
-    for (int n=0; n<num; n++) {
-      float grad = 0;
-      for (int batch=0; batch<batch_size; batch++) {
-        grad += conv.kernels_[batch*batch_size+ch].weight_d_[ch*num+n];
-      }
-      grad /= batch_size;
-      float w = conv.kernels_[ch].weight_[ch*num+n];
-      w = gradient_descent(w, grad);
-      for (int batch=0; batch<batch_size; batch++) {
-        conv.kernels_[batch*batch_size+ch].weight_[ch*num+n] = w;
+  for (int o_ch=0; o_ch<output_channel; o_ch++) {
+    for (int i_ch=0; i_ch<input_channel; i_ch++) {
+      for (int n=0; n<num; n++) {
+        float grad = 0;
+        for (int batch=0; batch<batch_size; batch++) {
+          grad += conv.kernels_[batch*output_channel+o_ch].weight_d_[i_ch*num+n];
+        }
+        grad /= batch_size;
+        float w = conv.kernels_[o_ch].weight_[i_ch*num+n];
+        w = gradient_descent(w, grad);
+        for (int batch=0; batch<batch_size; batch++) {
+          conv.kernels_[batch*output_channel+o_ch].weight_[i_ch*num+n] = w;
+        }
       }
     }
     float grad = 0;
     for (int batch=0; batch<batch_size; batch++) {
-      grad += conv.kernels_[batch*batch_size+ch].bias_d_;
+      grad += conv.kernels_[batch*output_channel+o_ch].bias_d_;
     }
-    float w = conv.kernels_[ch].bias_;
+    float w = conv.kernels_[o_ch].bias_;
     w /= batch_size;
     for (int batch=0; batch<batch_size; batch++) {
-      conv.kernels_[batch*batch_size+ch].bias_ = w;
+      conv.kernels_[batch*output_channel+o_ch].bias_ = w;
     }
   }
 }
