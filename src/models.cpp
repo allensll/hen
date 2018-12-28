@@ -16,16 +16,27 @@ CNN::CNN(int batch_size) :
   output_relu3_({batch_size, 500}),
   // output_fc2_({batch_size, 10}),
 
-  conv1_(Conv2D(batch_size, 1, 20, 5, 1)),
-  relu1_(Relu()),
-  pool1_(AvgPool2D(2, 2)),
-  conv2_(Conv2D(batch_size, 20, 50, 5, 1)),
-  relu2_(Relu()),
-  pool2_(AvgPool2D(2, 2)),
-  flat1_(Flatten()),
-  fc1_(Linear(batch_size, 50*4*4, 500)),
-  relu3_(Relu()),
-  fc2_(Linear(batch_size, 500, 10))
+  conv1_(batch_size, 1, 20, 5, 1),
+  relu1_(),
+  pool1_(2, 2),
+  conv2_(batch_size, 20, 50, 5, 1),
+  relu2_(),
+  pool2_(2, 2),
+  flat1_(),
+  fc1_(batch_size, 50*4*4, 500),
+  relu3_(),
+  fc2_(batch_size, 500, 10)
+
+  // conv1_(Conv2D(batch_size, 1, 20, 5, 1)),
+  // relu1_(Relu()),
+  // pool1_(AvgPool2D(2, 2)),
+  // conv2_(Conv2D(batch_size, 20, 50, 5, 1)),
+  // relu2_(Relu()),
+  // pool2_(AvgPool2D(2, 2)),
+  // flat1_(Flatten()),
+  // fc1_(Linear(batch_size, 50*4*4, 500)),
+  // relu3_(Relu()),
+  // fc2_(Linear(batch_size, 500, 10))
   // softmax1_(Softmax())
 {
   batch_size_ = batch_size;
@@ -56,12 +67,12 @@ void CNN::Backward(FloatTensor &input, FloatTensor &output) {
   relu3_.Backward(output_fc1_, output_relu3_);
   fc1_.Backward(output_flat1_, output_fc1_);
   flat1_.Backward(output_pool2_, output_flat1_);
-  pool2_.Backward(output_relu3_, output_pool2_);
+  pool2_.Backward(output_relu2_, output_pool2_);
   relu2_.Backward(output_conv2_, output_relu2_);
   conv2_.Backward(output_pool1_, output_conv2_);
   pool1_.Backward(output_relu1_, output_pool1_);
   relu1_.Backward(output_conv1_, output_relu1_);
-  conv1_.Backward(input, output_relu1_);
+  conv1_.Backward(input, output_conv1_);
 }
 
 

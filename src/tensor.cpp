@@ -100,10 +100,21 @@ FloatTensor & FloatTensor::operator=(const FloatTensor &assign) {
 }
 
 FloatTensor::~FloatTensor() {
-  delete [] data_;
-  delete [] grad_;
+  // cout << "1" << endl;
+  // cout << "size ";
+  // for (int i=0; i<dim_; i++) {
+  //   cout << " " << size_[i];
+  // }
+  // cout << endl;
   delete [] size_;
+  // cout << "2" << endl;
   delete [] idx_size_;
+  // cout << "data " << data_[0] << endl;
+  delete [] data_;
+  // cout << "4" << endl;
+  // cout << "grad " << grad_[0] << endl;
+  delete [] grad_;
+  // cout << "5" << endl;
 }
 const float FloatTensor::Get(initializer_list<int> il) {
   if (il.size() > dim_) {
@@ -174,7 +185,6 @@ void FloatTensor::SetGrad(initializer_list<int> il, float x) {
     i++;
   }
   grad_[idx] = x;
-  return;
 }
 void FloatTensor::ZeroGrad() {
   for (int i=0; i<data_size_; i++) {

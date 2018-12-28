@@ -116,7 +116,6 @@ void Weight::ZeroGrad() {
   }
 }
 
-
 // @ class Kernel
 Kernel::Kernel() {
   channel_ = 0;
@@ -183,23 +182,6 @@ Linear::Linear(int batch_size, int input_n, int output_n) {
   }
 }
 
-// Linear::Linear(seal::Evaluator* evaluator, FloatTensor &input, FloatTensor &output) :
-//   input_(input), output_(output), evaluator_(evaluator)
-// {
-//   evaluator_ = nullptr;
-
-//   input_n_ = input.size_[1];
-//   output_n_ = output.size_[1];
-//   batch_size_ = input.size_[0];
-//   weights_ = new Weight[batch_size_];
-//   for (int i=0; i<batch_size_; i++) {
-//     // Weight t(input_.size_[1], output_.size_[1]);
-//     // weights_[i] = t;
-//     weights_[i] = *new Weight(input_n_, output_n_);   /// ???????????????????????
-//   }
-
-// }
-
 Linear::~Linear() {
   delete [] weights_;
 }
@@ -231,7 +213,7 @@ void Linear::Backward(FloatTensor &input, FloatTensor &output) {
     for (int i=1; i<=input_n_; i++) {
       float temp = 0;
       for (int j=1; j<=output_n_; j++) {
-        temp += output.GetGrad({batch, j}) * weights_[batch].Get(j, i);
+        temp += output.GetGrad({batch, j}) * weights_[batch-1].Get(j, i);
       }
       input.SetGrad({batch, i}, temp);
     }
@@ -240,15 +222,13 @@ void Linear::Backward(FloatTensor &input, FloatTensor &output) {
       float grad = output.GetGrad({batch, i});
       for (int j=1; j<=input_n_; j++) {
         // 
-        weights_[batch].AddGrad(i, j, input.Get({batch, j}) * grad);
+        weights_[batch-1].AddGrad(i, j, input.Get({batch, j}) * grad);
       }
       // update bias grad
-      weights_[batch].bias_d_[i] += output.GetGrad({batch, i});
+      weights_[batch-1].bias_d_[i-1] += output.GetGrad({batch, i});
     }
   }
 }
-
-
 
 // @ class Conv2D
 // Tensor size is {batch_size, channel_size, height, weight}
@@ -262,34 +242,13 @@ Conv2D::Conv2D(int batch_size, int input_channel, int output_channel, int kernel
   kernels_ = new Kernel[kernel_n_];
   for (int channel=0; channel<output_channel_; channel++) {
     for (int batch=0; batch<batch_size_; batch++) {
-      int idx = batch * batch_size_ + channel;
+      int idx = batch * output_channel_ + channel;
       Kernel seed(input_channel_, kernel_size, idx);
       kernels_[idx] = seed;
     }
   }
 }
 
-// Conv2D::Conv2D(FloatTensor &input, FloatTensor &output, int kernel_size, int stride) :
-//   input_(input), output_(output), kernel_size_(kernel_size), stride_(stride) 
-// {
-//   // input.batch_size = output.batch_size
-//   batch_size_ = input.size_[0];
-//   input_channel_ = input.size_[1];
-//   input_h_ = input.size_[2];
-//   input_w_ = input.size_[3];
-//   output_channel_ = output.size_[1];
-//   output_h_ = output.size_[2];
-//   output_w_ = output.size_[3];
-//   kernel_n_ = batch_size_ * output_channel_;
-//   kernels_ = new Kernel[kernel_n_];
-//   for (int channel=0; channel<output_channel_; channel++) {
-//     Kernel seed(input_channel_, kernel_size);
-//     for (int batch=0; batch<batch_size_; batch++) {
-//       int idx = channel + batch * batch_size_;
-//       kernels_[idx] = seed;
-//     }
-//   }
-// }
 Conv2D::~Conv2D() {
   delete [] kernels_;
 }
@@ -416,19 +375,19 @@ void Conv2D::tensor2kernels(FloatTensor &input, Kernel* kernels, int stride) {
   int k_size = input_size  + (input_size-1)*(stride-1);
   Kernel seed(k_channel, k_size, 1);
   for (int n=0; n<kernel_n; n++) {
+    int idx = 0;
     for (int ch=0; ch<k_channel; ch++) {
-      int idx = 0;
       for (int h=0; h<input_size; h++) {
         for (int w=0; w<input_size; w++) {
           seed.weight_[idx++] = input.GetGrad({n+1, ch+1,h+1, w+1});    // ???????????????????????????
           if (w < input_size-1) {
-            for (int s=0; s<stride; s++) {
+            for (int s=0; s<stride-1; s++) {
               seed.weight_[idx++] = 0;
             }
           }
         }
         if (h < input_size-1) {
-          for (int s=0; s<stride; s++) {
+          for (int s=0; s<stride-1; s++) {
             seed.weight_[idx++] = 0;
           }
         }
@@ -458,9 +417,9 @@ void Conv2D::Forward(FloatTensor &input, FloatTensor &output) {
     int k = 0;
     int idx = 0;
     float* kernel_map[kernels_[0].weight_n_] {nullptr};  // { channel, kernel_h, kernel_w }
-    int out_h = 0;
+    int out_h = 1;
     for (int h=0; h < input_h - kernel_size_ + 1; h += stride_) {
-      int out_w = 0;
+      int out_w = 1;
       for (int w=0; w < input_w - kernel_size_ + 1; w += stride_) {
         for (int in_ch=0; in_ch<input_channel_; in_ch++) {
           for (int i=0; i<kernel_size_; i++) {
@@ -474,7 +433,9 @@ void Conv2D::Forward(FloatTensor &input, FloatTensor &output) {
           output.Set({batch, out_ch+1, out_h, out_w}, convolution(kernels_[out_ch], kernel_map));
         }
         k = 0;
-      }    
+        out_w++;
+      }
+      out_h++;    
     }
   }
 }
@@ -490,24 +451,25 @@ void Conv2D::Backward(FloatTensor &input, FloatTensor &output) {
   FloatTensor out_exp({batch_size_, output_channel_, out_exp_h, out_exp_h});
   expandmap(output, out_exp, stride_);
 
-  Kernel kernels_trans[input_channel_];
-  transkernels(kernels_, kernels_trans,  kernel_n_);
-
   for (int batch=1; batch<=batch_size_; batch++) {
     // update input tensor grad
-    int k = 0;
+    Kernel kernels_trans[input_channel_];
+    transkernels(&kernels_[(batch-1)*output_channel_], kernels_trans,  output_channel_);
+
+    // int k = 0;
     int idx = 0;
-    float* kernel_map[kernels_[0].weight_n_] {nullptr};  // { channel, kernel_h, kernel_w }
-    int in_h = 0;
+    float* kernel_map[kernels_trans[0].weight_n_] {nullptr};  // { channel, kernel_h, kernel_w }
+    int in_h = 1;
     for (int h=0; h < out_exp_h - kernel_size_ + 1; h++) {
-      int in_w = 0;
+      int in_w = 1;
       for (int w=0; w < out_exp_h - kernel_size_ + 1; w++) {
         // output_channel == output_exp_channel
+        int k = 0;
         for (int out_ch=0; out_ch<output_channel_; out_ch++) {
           for (int i=0; i<kernel_size_; i++) {
             for (int j=0; j<kernel_size_; j++) {
               idx = (batch-1) * (output_channel_*out_exp_h*out_exp_h) +  out_ch * (out_exp_h*out_exp_h) + (h+i) *out_exp_h + w+j;
-              kernel_map[k] = &out_exp.grad_[idx];
+              kernel_map[k++] = &out_exp.grad_[idx];
             }
           }
         }
@@ -515,38 +477,45 @@ void Conv2D::Backward(FloatTensor &input, FloatTensor &output) {
           // grad - kernel.bias  ???????????????????
           input.SetGrad({batch, in_ch+1, in_h, in_w}, convolution(kernels_trans[in_ch], kernel_map)-kernels_trans[in_ch].bias_);
         }
-        k = 0;
+        in_w++;
+        // k = 0;
       }
-    }  
+      in_h++;
+    }
+    for (int i=0; i<kernels_trans[0].weight_n_; i++) {
+      kernel_map[i] = nullptr;
+    }
   }
 
   // update kernel grad
-
   Kernel kernels_exp[batch_size_];
   tensor2kernels(output, kernels_exp, stride_);
   int kernel_exp_size = kernels_exp[0].kernel_size_;
 
   for (int batch=1; batch<=batch_size_; batch++) {
-    for (int k=0; k<kernel_n_; k++) {
-      int k_h = 0;
-      for (int h=0; h < input_h - kernel_exp_size + 1; h++) {
-        int k_w = 0;
-        for (int w=0; w < input_w - kernel_exp_size + 1; w++) {
-          float grad = 0;
-          for (int k_exp_ch=0; k_exp_ch < kernel_exp_size; k_exp_ch++) {
+    for (int k=0; k<input_channel_; k++) {
+      // int k_h = 0;
+      for (int h=0; h < kernel_size_; h++) {
+        // int k_w = 0;
+        for (int w=0; w < kernel_size_; w++) {
+          for (int k_exp_ch=0; k_exp_ch < output_channel_; k_exp_ch++) {
+            float grad = 0;
             for (int k_exp_h=0; k_exp_h < kernel_exp_size; k_exp_h++) {
               for (int k_exp_w=0; k_exp_w < kernel_exp_size; k_exp_w++) {
-                grad += input.Get({batch, k+1, h+k_exp_h+1, w+k_exp_w+1}) * kernels_exp[batch].weight_d_[k_exp_h * kernel_exp_size + k_exp_w];
+                float a = input.Get({batch, k+1, h+k_exp_h+1, w+k_exp_w+1});
+                float b = kernels_exp[batch-1].weight_[k_exp_ch*kernel_exp_size*kernel_exp_size + k_exp_h*kernel_exp_size + k_exp_w];
+                grad += a * b;
               }
             }
+            kernels_[(batch-1)*output_channel_+k_exp_ch].weight_d_[k*kernel_size_*kernel_size_ + h*kernel_size_ + w] = grad;
+            // if (out_exp.idx_size_[0] != 25600 || out_exp.idx_size_[1] != 12800 || out_exp.idx_size_[2] != 256 ||out_exp.idx_size_[3] != 16 || out_exp.idx_size_[4] != 1) {
+            //   std::cout << "asd" << std::endl;
+            // }
           }
-          kernels_[batch].weight_d_[h * kernel_size_ + w] = grad;
-          grad = 0;
         }
       }
     }
   }
-
   // update kernel bias
   for (int batch=1; batch<=batch_size_; batch++) {
     for (int ch=1; ch<=output_channel_; ch++) {
@@ -556,7 +525,7 @@ void Conv2D::Backward(FloatTensor &input, FloatTensor &output) {
           grad += output.GetGrad({batch, ch, h, w});
         }
       }
-      kernels_[batch].bias_d_ = grad;
+      kernels_[(batch-1)*output_channel_ + ch-1].bias_d_ = grad;
     }
   }
 }
@@ -567,17 +536,6 @@ AvgPool2D::AvgPool2D(int kernel_size, int stride) {
   kernel_size_ = kernel_size;
   stride_ = stride;
 }
-
-// AvgPool2D::AvgPool2D(FloatTensor &input, FloatTensor &output, int kernel_size) :
-//   input_(input), output_(output), kernel_size_(kernel_size), stride_(kernel_size)
-// {
-//   // input.batch_size = output.batch_size
-//   // input.channel = output.channel
-//   batch_size_ = input.size_[0];
-//   channel_ = input.size_[1];
-//   input_w_ = input.size_[2];
-//   input_h_ = input.size_[3];
-// }
 
 void AvgPool2D::ZeroGrad(FloatTensor &input) {
   input.ZeroGrad();
@@ -633,22 +591,18 @@ void AvgPool2D::Backward(FloatTensor &input, FloatTensor &output) {
 
 
   for (int batch=1; batch<=batch_size; batch++) {
-    for (int ch=1; ch<=channel; channel++) {
-      int input_h = 1;
+    for (int ch=1; ch<=channel; ch++) {
       for (int h=0; h < output_h; h++) {
-        int input_w = 1;
         for (int w=0; w < output_w; w++) {
           float grad = output.GetGrad({batch, ch, h+1, w+1});
           grad /= kernel_size_ * kernel_size_;
          
           for (int i=0; i<stride_; i++) {
             for (int j=0; j<stride_; j++) {
-                input.SetGrad({batch, ch, input_h, input_w}, grad);
+              input.SetGrad({batch, ch, h*stride_+i+1, w*stride_+j+1}, grad);  // has error
             }
           }
-          input_w++;
         }
-        input_h++;
       }
     }
   }
@@ -681,12 +635,6 @@ void Flatten::Backward(FloatTensor &input, FloatTensor &output) {
 Relu::Relu() {
 
 }
-
-// Relu::Relu(FloatTensor &input, FloatTensor &output) :
-//   input_(input), output_(output)
-// {
-//   batch_size_ = input_.size_[0];
-// }
 
 inline float Relu::relu(float x) {
   return (x > 0) ? x : 0;
@@ -757,9 +705,15 @@ Softmax::Softmax () {
 // }
 
 inline void Softmax::softmax(float* x, int n) {
+  float x_max = x[0];
+  for (int i=1; i<n; i++) {
+    if (x[i] > x_max) {
+      x_max = x[i];
+    }
+  }
   float sum = 0;
   for (int i=0; i<n; i++) {
-    x[i] = std::exp(x[i]);
+    x[i] = std::exp(x[i] - x_max);
     sum += x[i];
   }
   for (int i=0; i<n; i++) {
@@ -824,8 +778,6 @@ inline void LogSoftmax::log_softmax(float* x, int n) {
   }
 }
 
-
-
 NLLLoss::NLLLoss() {
 
 }
@@ -834,8 +786,6 @@ NLLLoss::NLLLoss() {
 CrossEntropyLoss::CrossEntropyLoss() {
 
 }
-
-
 
 float CrossEntropyLoss::Loss(FloatTensor &input, FloatTensor &target) {
   int batch_size = input.size_[0];
@@ -847,7 +797,25 @@ float CrossEntropyLoss::Loss(FloatTensor &input, FloatTensor &target) {
   float loss = 0;
   for (int batch=1; batch<=batch_size; batch++) {
     int cls = target.Get({batch}) + 1;
-    loss += -log(input.Get({batch, cls}));
+    // overflow and underflow
+    float x_max = input.data_[batch*class_num];
+    for (int i=1; i<class_num; i++) {
+      if (input.data_[batch*class_num+i] > x_max) {
+        x_max = input.data_[batch*class_num+i];
+      }
+    }
+    float sum = 0;
+    float temp[class_num] {0};
+    for (int i=0; i<class_num; i++) {
+      temp[i] = input.data_[batch*class_num+i];
+    }
+    for (int i=0; i<class_num; i++) {
+      temp[i] = std::exp(temp[i] - x_max);
+      sum += temp[i];
+    }
+    //
+    loss += -input.Get({batch, cls}) + x_max + log(sum);
+    // loss += -log(output.Get({batch, cls}));
   }
   Backward(input, output);
   return loss;
