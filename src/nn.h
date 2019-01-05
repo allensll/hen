@@ -216,7 +216,7 @@ class CrossEntropyLoss {
   // input { batch_size, class_num }, target { batch_size } label start from 0
   float Loss(FloatTensor &input, FloatTensor &target);
   void Forward();
-  void Backward(FloatTensor &input, FloatTensor &output);
+  void Backward(FloatTensor &input, FloatTensor &output, FloatTensor &target);
   void ZeroGrad(FloatTensor &input);
  private:
   // void softmax(FloatTensor &input, FloatTensor &output);

@@ -4,6 +4,35 @@
 #include "nn.h"
 
 namespace hen {
+// @ class NN1
+class NN1 {
+ public:
+  NN1(int batch_size);
+  void Forward(FloatTensor &input, FloatTensor &output);
+  void Backward(FloatTensor &input, FloatTensor &output);
+  Flatten flat1_;
+  Linear fc1_;
+  FloatTensor output_flat1_;
+  int batch_size_;
+};
+
+// @ class MLP
+class MLP {
+ public:
+  MLP(int batch_size);
+  void Forward(FloatTensor &input, FloatTensor &output);
+  void Backward(FloatTensor &input, FloatTensor &output);
+  Flatten flat1_;
+  Linear fc1_;
+  Relu relu1_;
+  Linear fc2_;
+  FloatTensor output_flat1_;
+  FloatTensor output_fc1_;
+  FloatTensor output_relu1_;
+  int batch_size_;
+};
+
+
 // @ class CNN
 // https://github.com/pytorch/examples/blob/master/mnist/main.py
 class CNN {

@@ -22,8 +22,8 @@ Weight::Weight(int input, int output, int seed) {
   weight_d_ = new float[weight_n_] {0};
   bias_ = new float[bias_n_] {0};
   bias_d_ = new float[bias_n_] {0};
-  Randomfunction(weight_, weight_n_, seed);
-  Randomfunction(bias_, bias_n_, seed);
+  Randomfunction(weight_, weight_n_, seed, std::sqrt(1.0/input));
+  Randomfunction(bias_, bias_n_, 3*seed+13, std::sqrt(1.0/input));
 }
 Weight & Weight::operator=(const Weight &assign) {
   if (this == &assign)
@@ -133,8 +133,8 @@ Kernel::Kernel(int channel, int kernel_size, int seed) {
   weight_n_ = channel * kernel_size * kernel_size;
   weight_ = new float[weight_n_] {0};
   weight_d_ = new float[weight_n_] {0};
-  Randomfunction(weight_, weight_n_, seed);
-  Randomfunction(&bias_, 1, seed);
+  Randomfunction(weight_, weight_n_, seed, std::sqrt(1.0/(channel*kernel_size*kernel_size)));
+  Randomfunction(&bias_, 1, 3*seed+13, std::sqrt(1.0/(channel*kernel_size*kernel_size)));
   bias_d_ = 0;
 }
 
@@ -177,7 +177,7 @@ Linear::Linear(int batch_size, int input_n, int output_n) {
   output_n_ = output_n;
   weights_ = new Weight[batch_size_];
   for (int i=0; i<batch_size_; i++) {
-    Weight seed(input_n_, output_n_, i);
+    Weight seed(input_n_, output_n_, input_n+output_n+13);
     weights_[i] = seed;   // all batch use same weight
   }
 }
@@ -243,7 +243,7 @@ Conv2D::Conv2D(int batch_size, int input_channel, int output_channel, int kernel
   for (int channel=0; channel<output_channel_; channel++) {
     for (int batch=0; batch<batch_size_; batch++) {
       int idx = batch * output_channel_ + channel;
-      Kernel seed(input_channel_, kernel_size, idx);
+      Kernel seed(input_channel_, kernel_size, 3*channel+13);
       kernels_[idx] = seed;
     }
   }
@@ -733,7 +733,7 @@ void Softmax::Forward(FloatTensor &input, FloatTensor &output) {
   int class_num = input.size_[1];
 
   float temp[class_num] = {0};
-  for (int batch=1; batch<batch_size; batch++) {
+  for (int batch=1; batch<=batch_size; batch++) {
     for (int i=0; i<class_num; i++) {
       temp[i] = input.Get({batch, i+1});
     }
@@ -795,8 +795,7 @@ float CrossEntropyLoss::Loss(FloatTensor &input, FloatTensor &target) {
   softmax.Forward(input, output);
 
   float loss = 0;
-  for (int batch=1; batch<=batch_size; batch++) {
-    int cls = target.Get({batch}) + 1;
+  for (int batch=0; batch<batch_size; batch++) {
     // overflow and underflow
     float x_max = input.data_[batch*class_num];
     for (int i=1; i<class_num; i++) {
@@ -814,11 +813,12 @@ float CrossEntropyLoss::Loss(FloatTensor &input, FloatTensor &target) {
       sum += temp[i];
     }
     //
-    loss += -input.Get({batch, cls}) + x_max + log(sum);
+    int cls = target.Get({batch+1});
+    loss += -input.Get({batch+1, cls+1}) + x_max + log(sum);
     // loss += -log(output.Get({batch, cls}));
   }
-  Backward(input, output);
-  return loss;
+  Backward(input, output, target);
+  return loss / batch_size;
 }
 
 void CrossEntropyLoss::ZeroGrad(FloatTensor &input) {
@@ -829,10 +829,14 @@ void CrossEntropyLoss::Forward() {
 
 }
 
-void CrossEntropyLoss::Backward(FloatTensor &input, FloatTensor &output) {
+void CrossEntropyLoss::Backward(FloatTensor &input, FloatTensor &output, FloatTensor &target) {
   for (int batch=1; batch<=input.size_[0]; batch++) {
+    int batch_tag = target.Get({batch}) + 1;
     for (int cls=1; cls<=input.size_[1]; cls++) {
-      float grad = output.Get({batch, cls}) - input.Get({batch, cls});
+      float grad = output.Get({batch, cls});
+      if (batch_tag == cls) {
+        grad -= 1;
+      }
       input.SetGrad({batch, cls}, grad);
     }
   }

@@ -1,6 +1,54 @@
 #include "models.h"
 
 namespace hen {
+// @ class NN1
+NN1::NN1(int batch_size) :
+  output_flat1_({batch_size, 1*28*28}),
+  flat1_(),
+  fc1_(batch_size, 784, 10)
+{
+  batch_size_ = batch_size;
+}
+
+void NN1::Forward(FloatTensor &input, FloatTensor &output) {
+  flat1_.Forward(input, output_flat1_);
+  fc1_.Forward(output_flat1_, output);
+}
+
+void NN1::Backward(FloatTensor &input, FloatTensor &output) {
+  fc1_.Backward(output_flat1_, output);
+  flat1_.Backward(input, output_flat1_);
+}
+
+// @ class MLP
+// input tensor { batch_size, 1, 28, 28 }
+// output tensor { batch, 10 }
+MLP::MLP(int batch_size) :
+  output_flat1_({batch_size, 1*28*28}),
+  output_fc1_({batch_size, 50}),
+  output_relu1_({batch_size, 50}),
+  flat1_(),
+  fc1_(batch_size, 784, 50),
+  relu1_(),
+  fc2_(batch_size, 50, 10)
+{
+  batch_size_ = batch_size;
+}
+
+void MLP::Forward(FloatTensor &input, FloatTensor &output) {
+  flat1_.Forward(input, output_flat1_);
+  fc1_.Forward(output_flat1_, output_fc1_);
+  relu1_.Forward(output_fc1_, output_relu1_);
+  fc2_.Forward(output_relu1_, output);
+}
+
+void MLP::Backward(FloatTensor &input, FloatTensor &output) {
+  fc2_.Backward(output_relu1_, output);
+  relu1_.Backward(output_fc1_, output_relu1_);
+  fc1_.Backward(output_flat1_, output_fc1_);
+  flat1_.Backward(input, output_flat1_);
+}
+
 // @ class CNN
 // input tensor { batch_size, 1, 28, 28 }
 // output tensor { batch, 10 }

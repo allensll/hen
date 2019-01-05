@@ -10,6 +10,8 @@ class SGD {
  public:
   SGD(float lr, float momentum);
   void Step(CNN &model);
+  void Step(MLP &model);
+  void Step(NN1 &model);
  private:
   float lr_;
   float momentum_;

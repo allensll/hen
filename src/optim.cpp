@@ -38,6 +38,17 @@ void SGD::Step(CNN &model) {
   update_conv(model.conv1_, batch_size);
 }
 
+void SGD::Step(MLP &model) {
+  int batch_size = model.batch_size_;
+  update_linear(model.fc1_, batch_size);
+  update_linear(model.fc2_, batch_size);
+}
+
+void SGD::Step(NN1 &model) {
+  int batch_size = model.batch_size_;
+  update_linear(model.fc1_, batch_size);
+}
+
 float SGD::gradient_descent(float w, float grad) {
   return w - lr_ * grad;
 }

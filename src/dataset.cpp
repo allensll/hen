@@ -165,7 +165,7 @@ void MNIST::GetTrainBatches(FloatTensor data[], FloatTensor label[], int batch_n
     FloatTensor label_temp({batch_size});
     for (int i=0; i<batch_size; i++) {
       for (int j=0; j<wh; j++) {
-        data_temp.data_[i*wh+j] = train_[batch*batch_size+i].data[j];
+        data_temp.data_[i*wh+j] = (float)train_[batch*batch_size+i].data[j] / 255;
       }
       label_temp.data_[i] = train_[batch*batch_size+i].label;
     }
@@ -183,7 +183,7 @@ void MNIST::GetTestBatches(FloatTensor data[], FloatTensor label[], int batch_n,
     FloatTensor label_temp({batch_size});
     for (int i=0; i<batch_size; i++) {
       for (int j=0; j<wh; j++) {
-        data_temp.data_[i*wh+j] = test_[batch*batch_size+i].data[j];
+        data_temp.data_[i*wh+j] = (float)test_[batch*batch_size+i].data[j] / 255;
       }
       label_temp.data_[i] = test_[batch*batch_size+i].label;
     }
