@@ -25,6 +25,15 @@ set(HEN_SOURCE_DIR ${CMAKE_SOURCE_DIR}/hen)
 add_library(hen)
 add_dependencies(hen seal)
 
+target_include_directories(hen
+
+)
+
+target_link_libraries(hen
+    seal
+)
+
+
 # option(BUILD_SHARED "To build shared objects" OFF)
 
 
